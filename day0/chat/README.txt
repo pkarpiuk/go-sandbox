@@ -1,0 +1,1 @@
+Po uruchomieniu serwera w przeglądarce wchodzimy w http://localhost:8080/chat

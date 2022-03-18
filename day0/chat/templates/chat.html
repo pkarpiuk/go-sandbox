@@ -1,0 +1,56 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Komunikator</title>
+    <style>
+        input {
+            display: block;
+        }
+
+        ul {
+            list-style: none;
+        }
+    </style>
+</head>
+
+<body>
+    <ul id="messages"></ul>
+    <form id="chatbox">
+        <textarea></textarea>
+        <input type="submit" value="Wyślij" />
+    </form>
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script>
+        $(function() {
+            var socket = null;
+            var msgBox = $('#chatbox textarea');
+            var messages = $('#messages');
+            $('#chatbox').submit(function(event) {
+                event.preventDefault();
+                if (!msgBox.val()) return false;
+                if (!socket) {
+                    alert('Błąd: Brak połączenia z serwerem.');
+                    return false;
+                }
+                socket.send(msgBox.val());
+                msgBox.val('');
+                return false;
+            });
+            if(!window['WebSocket']) {
+                alert('Błąd: Twoja przeglądarka nie obsługuje technologii WebSocket.');
+            } else {
+                socket = new WebSocket('ws://{{.Host}}/room?name=Pogaduszki');
+                console.info('NEW WEBSOCKET');
+                socket.onclose = function() {
+                    alert('Połączenie zostało zamknięte.');
+                }
+                socket.onmessage = function(e) {
+                    messages.append($('<li>').text(e.data)); 
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
