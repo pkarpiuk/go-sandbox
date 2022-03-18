@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -103,10 +104,10 @@ func (r *room) run() {
 								owner: message.client,
 							}
 							allSubrooms[subroomName] = subroom
-							message.text = []byte("Kanał utworzony")
+							message.text = []byte(fmt.Sprintf("Kanał %s utworzony", subroomName))
 							message.client.send <- message
 						} else {
-							message.text = []byte("Błąd: istnieje już kanał o takiej nazwie")
+							message.text = []byte(fmt.Sprintf("Błąd: istnieje już kanał o takiej nazwie (%s)", subroomName))
 							message.fromServer = true
 							message.client.send <- message
 						}
@@ -116,19 +117,19 @@ func (r *room) run() {
 						subroom, ok := allSubrooms[subroomName]
 						if ok {
 							message.subroomName = subroom.name
-							message.text = []byte("Udane przejście do kanału")
+							message.text = []byte(fmt.Sprintf("Udane przejście do kanału %s", subroomName))
 							message.client.send <- message
 						} else {
-							message.text = []byte("Błąd: nie istnieje kanał o takiej nazwie")
+							message.text = []byte(fmt.Sprintf("Błąd: nie istnieje kanał o takiej nazwie (%s)", subroomName))
 							message.fromServer = true
 							message.client.send <- message
 						}
 					} else if cmd == "unjoin" {
 						message.subroomName = ""
-						message.text = []byte("Udane przejście do kanału głównego")
+						message.text = []byte("Udany powrót do kanału głównego")
 						message.client.send <- message
 					} else {
-						message.text = []byte("Błąd: nieznane polecenie")
+						message.text = []byte(fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
 						message.fromServer = true
 						message.client.send <- message
 					}
