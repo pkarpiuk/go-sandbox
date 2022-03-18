@@ -82,6 +82,12 @@ func (r *room) run() {
 			if ok { // not ok to pusty kanał
 				// dołączanie do pokoju
 				r.clients[client] = true
+				message := &message{
+					subroomName: "",
+					client:      client,
+				}
+				sendMsgFromServer(message, "Dostępne polecenia: /create, /join, /unjoin, /list, /who")
+
 				log.Println("Do pokoju dołączył nowy klient!")
 			}
 		case client, ok := <-r.leave:
@@ -140,7 +146,7 @@ func (r *room) run() {
 						sendMsgFromServer(message, "Udany powrót do kanału głównego")
 					} else if cmd == "list" {
 						list := make([]string, 0)
-						for name, _ := range r.allSubrooms {
+						for name := range r.allSubrooms {
 							list = append(list, name)
 						}
 						sendMsgFromServer(message, fmt.Sprintf("Dostępne kanały (%d): %s", len(r.allSubrooms), strings.Join(list, ", ")))

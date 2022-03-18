@@ -49,7 +49,9 @@ func (c *client) write() {
 		c.subroomName = message.subroomName
 		msgText := message.text
 		if !message.fromServer {
-			msgText = []byte(fmt.Sprintf("%s: %s", message.client.name, string(message.text)))
+			msgText = []byte(fmt.Sprintf("<i>%s</i>: %s", message.client.name, string(message.text)))
+		} else {
+			msgText = []byte(fmt.Sprintf("<b>%s</b>", string(message.text)))
 		}
 		err := c.socket.WriteMessage(websocket.TextMessage, msgText)
 		if err != nil {

@@ -52,7 +52,7 @@
                     alert('Połączenie zostało zamknięte.');
                 }
                 socket.onmessage = function(e) {
-                    messages.append($('<li>').text(e.data)); 
+                    messages.append($('<li>').html(e.data)); 
                 }
             }
         })
