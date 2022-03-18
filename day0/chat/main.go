@@ -30,7 +30,7 @@ func (t *templateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func getRoom(w http.ResponseWriter, req *http.Request) {
 	names, ok := req.URL.Query()["name"]
 	if !ok || len(names[0]) < 1 {
-		log.Fatal("Brak parametru 'names'")
+		log.Fatal("Brak parametru 'name'")
 		return
 	}
 	name := names[0]

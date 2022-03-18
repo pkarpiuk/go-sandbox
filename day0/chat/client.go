@@ -1,12 +1,16 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/gorilla/websocket"
 )
 
 // Typ client reprezentuje pojedynczego użytkownika
 // prowadzącego konwersację z użyciem komunikatora
 type client struct {
+	// nazwa użytkownika
+	name string
 	// socket to gniazdo internetowe do obsługi danego klienta
 	socket *websocket.Conn
 	// send to kanał, którym są przesyłane komunikaty
@@ -22,6 +26,7 @@ func (c *client) read() {
 		if err != nil {
 			return
 		}
+		msg = []byte(fmt.Sprintf("%s: %s", c.name, string(msg)))
 		c.room.forward <- msg
 	}
 }

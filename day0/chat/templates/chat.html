@@ -40,7 +40,10 @@
             if(!window['WebSocket']) {
                 alert('Błąd: Twoja przeglądarka nie obsługuje technologii WebSocket.');
             } else {
-                socket = new WebSocket('ws://{{.Host}}/room?name=Pogaduszki');
+                const queryString = window.location.search;
+                const urlParams = new URLSearchParams(queryString);
+                console.info('UNAME', urlParams.get('uname'));
+                socket = new WebSocket('ws://{{.Host}}/room?name=Pogaduszki&uname=' + (urlParams.get('uname') || ''));
                 console.info('NEW WEBSOCKET');
                 socket.onclose = function() {
                     alert('Połączenie zostało zamknięte.');

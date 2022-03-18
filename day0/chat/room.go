@@ -81,12 +81,19 @@ func (r *room) run() {
 }
 
 func (r *room) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	userNames, ok := req.URL.Query()["uname"]
+	if !ok || len(userNames[0]) < 1 {
+		userNames = []string{"Guest"}
+		log.Println("Brak parametru 'uname', przyjęty 'Guest'")
+	}
+	username := userNames[0]
 	socket, err := upgrader.Upgrade(w, req, nil)
 	if err != nil {
 		log.Fatal("ServeHTTP:", err)
 		return
 	}
 	client := &client{
+		name:   username,
 		socket: socket,
 		send:   make(chan []byte, mesasgeBufferSize),
 		room:   r,
