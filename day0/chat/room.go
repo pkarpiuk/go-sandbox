@@ -58,11 +58,12 @@ func (r *room) run() {
 				close(client.send)
 				log.Println("Klient opuścił pokój.")
 				if len(r.clients) == 0 {
-					// ostatni użytkownik opuścił kanał
+					// ostatni użytkownik opuścił pokój
 					log.Println("To był ostatni klient, usuwamy pokój")
 					close(r.forward)
 					close(r.join)
 					close(r.leave)
+					return
 				}
 			}
 		case msg, ok := <-r.forward:
