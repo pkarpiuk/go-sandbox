@@ -63,6 +63,7 @@ func (r *room) run() {
 					close(r.forward)
 					close(r.join)
 					close(r.leave)
+					removeRoom(r.name)
 					return
 				}
 			}
