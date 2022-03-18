@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -14,13 +15,27 @@ const (
 
 var upgrader = &websocket.Upgrader{ReadBufferSize: socketBufferSize, WriteBufferSize: socketBufferSize}
 
+type message struct {
+	subroomName string
+	text        []byte
+	client      *client
+	fromServer  bool
+}
+
+type subroom struct {
+	name  string
+	owner *client
+}
+
+var allSubrooms = make(map[string]*subroom)
+
 type room struct {
 	// name to nazwa kanału
 	name string
 
 	// forward to kanał przechowujący nadsyłane komunikaty
 	// które należy przesłać do przeglądarki użytkownika
-	forward chan []byte
+	forward chan *message
 
 	// join to kanał dla klientów, którzy chcą dołączyć do pokoju
 	join chan *client
@@ -35,7 +50,7 @@ type room struct {
 func newRoom(name string) *room {
 	return &room{
 		name:    name,
-		forward: make(chan []byte),
+		forward: make(chan *message),
 		join:    make(chan *client),
 		leave:   make(chan *client),
 		clients: make(map[*client]bool),
@@ -67,13 +82,64 @@ func (r *room) run() {
 					return
 				}
 			}
-		case msg, ok := <-r.forward:
+		case message, ok := <-r.forward:
 			if ok { // not ok to pusty kanał
-				log.Println("Odebrano wiadomość: ", string(msg))
-				// rozsyłanie wiadomości do wszystkich klientów
-				for client := range r.clients {
-					client.send <- msg
-					log.Println(" -- wysłano do klienta.")
+				messageStr := strings.TrimSpace(string(message.text))
+				log.Println("Odebrano wiadomość: ", messageStr, " z podkanału ", message.subroomName)
+				if strings.HasPrefix(messageStr, "/") {
+					chunks := strings.Split(messageStr[1:], " ")
+					cmd := chunks[0]
+					log.Printf("COMMAND: %v %v", chunks, len(chunks))
+					params := ""
+					if len(chunks) > 1 {
+						params = chunks[1]
+					}
+					if cmd == "create" && len(params) > 0 {
+						subroomName := params
+						_, ok := allSubrooms[subroomName]
+						if !ok {
+							subroom := &subroom{
+								name:  subroomName,
+								owner: message.client,
+							}
+							allSubrooms[subroomName] = subroom
+							message.text = []byte("Kanał utworzony")
+							message.client.send <- message
+						} else {
+							message.text = []byte("Błąd: istnieje już kanał o takiej nazwie")
+							message.fromServer = true
+							message.client.send <- message
+						}
+					} else if cmd == "join" && len(params) > 0 {
+						subroomName := params
+						log.Printf("Subroom name: '%s'", subroomName)
+						subroom, ok := allSubrooms[subroomName]
+						if ok {
+							message.subroomName = subroom.name
+							message.text = []byte("Udane przejście do kanału")
+							message.client.send <- message
+						} else {
+							message.text = []byte("Błąd: nie istnieje kanał o takiej nazwie")
+							message.fromServer = true
+							message.client.send <- message
+						}
+					} else if cmd == "unjoin" {
+						message.subroomName = ""
+						message.text = []byte("Udane przejście do kanału głównego")
+						message.client.send <- message
+					} else {
+						message.text = []byte("Błąd: nieznane polecenie")
+						message.fromServer = true
+						message.client.send <- message
+					}
+				} else {
+					// rozsyłanie wiadomości do wszystkich klientów
+					for client := range r.clients {
+						if client.subroomName == message.subroomName {
+							client.send <- message
+							log.Println(" -- wysłano do klienta", client.name)
+						}
+					}
 				}
 			}
 		}
@@ -95,7 +161,7 @@ func (r *room) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	client := &client{
 		name:   username,
 		socket: socket,
-		send:   make(chan []byte, mesasgeBufferSize),
+		send:   make(chan *message, mesasgeBufferSize),
 		room:   r,
 	}
 	r.join <- client

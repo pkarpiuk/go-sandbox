@@ -43,9 +43,9 @@
                 const queryString = window.location.search;
                 const urlParams = new URLSearchParams(queryString);
                 const uname = urlParams.get('uname')
-                const chname = urlParams.get('chname')
+                const chname = urlParams.get('rname')
                 console.info('UNAME', uname);
-                console.info('CHNAME', chname);
+                console.info('RNAME', chname);
                 socket = new WebSocket('ws://{{.Host}}/room?name=' + (chname || 'Pogaduszki') +'&uname=' + (uname || ''));
                 console.info('NEW WEBSOCKET');
                 socket.onclose = function() {

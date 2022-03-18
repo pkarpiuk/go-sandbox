@@ -12,10 +12,16 @@ import (
 type client struct {
 	// nazwa użytkownika
 	name string
+
+	// subroomName to nazwa podkanału w którym aktualnie jest użytkownik
+	// Pusta wartość oznacza podkanał domyślny od którego wszyscy zaczynają,
+	// potem można zmienić podkanał poleceniem "/join #subroomName-name"
+	subroomName string
+
 	// socket to gniazdo internetowe do obsługi danego klienta
 	socket *websocket.Conn
 	// send to kanał, którym są przesyłane komunikaty
-	send chan []byte
+	send chan *message
 	// room to pokój rozmów używany przez klienta
 	room *room
 }
@@ -28,15 +34,24 @@ func (c *client) read() {
 			log.Println("Client socket read error: %v", err)
 			return
 		}
-		msg = []byte(fmt.Sprintf("%s: %s", c.name, string(msg)))
-		c.room.forward <- msg
+		message := &message{
+			subroomName: c.subroomName,
+			text:        msg,
+			client:      c,
+		}
+		c.room.forward <- message
 	}
 }
 
 func (c *client) write() {
 	defer c.socket.Close()
-	for msg := range c.send {
-		err := c.socket.WriteMessage(websocket.TextMessage, msg)
+	for message := range c.send {
+		c.subroomName = message.subroomName
+		msgText := message.text
+		if !message.fromServer {
+			msgText = []byte(fmt.Sprintf("%s: %s", message.client.name, string(message.text)))
+		}
+		err := c.socket.WriteMessage(websocket.TextMessage, msgText)
 		if err != nil {
 			log.Println("Client socket write error: %v", err)
 			return
