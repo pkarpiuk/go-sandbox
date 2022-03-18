@@ -42,8 +42,11 @@
             } else {
                 const queryString = window.location.search;
                 const urlParams = new URLSearchParams(queryString);
-                console.info('UNAME', urlParams.get('uname'));
-                socket = new WebSocket('ws://{{.Host}}/room?name=Pogaduszki&uname=' + (urlParams.get('uname') || ''));
+                const uname = urlParams.get('uname')
+                const chname = urlParams.get('chname')
+                console.info('UNAME', uname);
+                console.info('CHNAME', chname);
+                socket = new WebSocket('ws://{{.Host}}/room?name=' + (chname || 'Pogaduszki') +'&uname=' + (uname || ''));
                 console.info('NEW WEBSOCKET');
                 socket.onclose = function() {
                     alert('Połączenie zostało zamknięte.');
