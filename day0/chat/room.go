@@ -46,13 +46,13 @@ func (r *room) run() {
 	for {
 		select {
 		case client, ok := <-r.join:
-			if ok {
+			if ok { // not ok to pusty kanał
 				// dołączanie do pokoju
 				r.clients[client] = true
 				log.Println("Do pokoju dołączył nowy klient!")
 			}
 		case client, ok := <-r.leave:
-			if ok {
+			if ok { // not ok to pusty kanał
 				// opuszczanie pokoju
 				delete(r.clients, client)
 				close(client.send)
@@ -68,7 +68,7 @@ func (r *room) run() {
 				}
 			}
 		case msg, ok := <-r.forward:
-			if ok {
+			if ok { // not ok to pusty kanał
 				log.Println("Odebrano wiadomość: ", string(msg))
 				// rozsyłanie wiadomości do wszystkich klientów
 				for client := range r.clients {

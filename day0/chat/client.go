@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/gorilla/websocket"
 )
@@ -24,6 +25,7 @@ func (c *client) read() {
 	for {
 		_, msg, err := c.socket.ReadMessage()
 		if err != nil {
+			log.Println("Client socket read error: %v", err)
 			return
 		}
 		msg = []byte(fmt.Sprintf("%s: %s", c.name, string(msg)))
@@ -36,6 +38,7 @@ func (c *client) write() {
 	for msg := range c.send {
 		err := c.socket.WriteMessage(websocket.TextMessage, msg)
 		if err != nil {
+			log.Println("Client socket write error: %v", err)
 			return
 		}
 	}
