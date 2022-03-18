@@ -65,6 +65,16 @@ func sendMsgFromServer(message *message, text string) {
 	message.client.send <- message
 }
 
+func (r *room) getUsersInChannel(subroomName string) []string {
+	list := make([]string, 0)
+	for client := range r.clients {
+		if client.subroomName == subroomName {
+			list = append(list, client.name)
+		}
+	}
+	return list
+}
+
 func (r *room) run() {
 	for {
 		select {
@@ -134,6 +144,9 @@ func (r *room) run() {
 							list = append(list, name)
 						}
 						sendMsgFromServer(message, fmt.Sprintf("Dostępne kanały (%d): %s", len(r.allSubrooms), strings.Join(list, ", ")))
+					} else if cmd == "who" {
+						list := r.getUsersInChannel(message.subroomName)
+						sendMsgFromServer(message, fmt.Sprintf("W bieżącym kanale są użytkownicy (%d): %s", len(list), strings.Join(list, ", ")))
 					} else {
 						sendMsgFromServer(message, fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
 					}
