@@ -28,8 +28,6 @@ type subroom struct {
 	owner *client
 }
 
-var allSubrooms = make(map[string]*subroom)
-
 type room struct {
 	// name to nazwa kanału
 	name string
@@ -46,15 +44,18 @@ type room struct {
 
 	// clients zawiera wszystkich klientów, którzy znajdują się w pokoju
 	clients map[*client]bool
+
+	allSubrooms map[string]*subroom
 }
 
 func newRoom(name string) *room {
 	return &room{
-		name:    name,
-		forward: make(chan *message),
-		join:    make(chan *client),
-		leave:   make(chan *client),
-		clients: make(map[*client]bool),
+		name:        name,
+		forward:     make(chan *message),
+		join:        make(chan *client),
+		leave:       make(chan *client),
+		clients:     make(map[*client]bool),
+		allSubrooms: make(map[string]*subroom),
 	}
 }
 
@@ -103,13 +104,13 @@ func (r *room) run() {
 					}
 					if cmd == "create" && len(params) > 0 {
 						subroomName := params
-						_, ok := allSubrooms[subroomName]
+						_, ok := r.allSubrooms[subroomName]
 						if !ok {
 							subroom := &subroom{
 								name:  subroomName,
 								owner: message.client,
 							}
-							allSubrooms[subroomName] = subroom
+							r.allSubrooms[subroomName] = subroom
 							sendMsgFromServer(message, fmt.Sprintf("Kanał %s utworzony", subroomName))
 						} else {
 							sendMsgFromServer(message, fmt.Sprintf("Błąd: istnieje już kanał o takiej nazwie (%s)", subroomName))
@@ -117,7 +118,7 @@ func (r *room) run() {
 					} else if cmd == "join" && len(params) > 0 {
 						subroomName := params
 						log.Printf("Subroom name: '%s'", subroomName)
-						subroom, ok := allSubrooms[subroomName]
+						subroom, ok := r.allSubrooms[subroomName]
 						if ok {
 							message.subroomName = subroom.name
 							sendMsgFromServer(message, fmt.Sprintf("Udane przejście do kanału %s", subroomName))
@@ -127,6 +128,12 @@ func (r *room) run() {
 					} else if cmd == "unjoin" {
 						message.subroomName = ""
 						sendMsgFromServer(message, "Udany powrót do kanału głównego")
+					} else if cmd == "list" {
+						list := make([]string, 0)
+						for name, _ := range r.allSubrooms {
+							list = append(list, name)
+						}
+						sendMsgFromServer(message, fmt.Sprintf("Dostępne kanały (%d): %s", len(r.allSubrooms), strings.Join(list, ", ")))
 					} else {
 						sendMsgFromServer(message, fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
 					}
