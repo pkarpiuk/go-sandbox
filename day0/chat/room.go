@@ -17,10 +17,9 @@ const (
 var upgrader = &websocket.Upgrader{ReadBufferSize: socketBufferSize, WriteBufferSize: socketBufferSize}
 
 type message struct {
-	subroomName string
-	text        []byte
-	client      *client
-	fromServer  bool
+	text       []byte
+	client     *client
+	fromServer bool
 }
 
 type subroom struct {
@@ -85,8 +84,7 @@ func (r *room) run() {
 				// dołączanie do pokoju
 				r.clients[client] = true
 				message := &message{
-					subroomName: "",
-					client:      client,
+					client: client,
 				}
 				sendMsgFromServer(message, "Dostępne polecenia: /create cname, /join cname, /unjoin cname, /list, /who cname")
 
@@ -111,7 +109,6 @@ func (r *room) run() {
 		case message, ok := <-r.forward:
 			if ok { // not ok to pusty kanał
 				messageStr := strings.TrimSpace(string(message.text))
-				log.Println("Odebrano wiadomość: ", messageStr, " z podkanału ", message.subroomName)
 				if strings.HasPrefix(messageStr, "/") {
 					chunks := strings.Split(messageStr[1:], " ")
 					cmd := chunks[0]
