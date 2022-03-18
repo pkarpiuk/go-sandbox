@@ -13,11 +13,6 @@ type client struct {
 	// nazwa użytkownika
 	name string
 
-	// subroomName to nazwa podkanału w którym aktualnie jest użytkownik
-	// Pusta wartość oznacza podkanał domyślny od którego wszyscy zaczynają,
-	// potem można zmienić podkanał poleceniem "/join #subroomName-name"
-	subroomName string
-
 	// socket to gniazdo internetowe do obsługi danego klienta
 	socket *websocket.Conn
 	// send to kanał, którym są przesyłane komunikaty
@@ -35,9 +30,8 @@ func (c *client) read() {
 			return
 		}
 		message := &message{
-			subroomName: c.subroomName,
-			text:        msg,
-			client:      c,
+			text:   msg,
+			client: c,
 		}
 		c.room.forward <- message
 	}
@@ -46,7 +40,6 @@ func (c *client) read() {
 func (c *client) write() {
 	defer c.socket.Close()
 	for message := range c.send {
-		c.subroomName = message.subroomName
 		msgText := message.text
 		if !message.fromServer {
 			msgText = []byte(fmt.Sprintf("<i>%s</i>: %s", message.client.name, string(message.text)))

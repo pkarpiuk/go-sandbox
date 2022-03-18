@@ -24,7 +24,9 @@ type message struct {
 }
 
 type subroom struct {
-	name  string
+	name string
+	// zbiór nazw użytkowników w kanale
+	users map[string]*client
 	owner *client
 }
 
@@ -67,9 +69,9 @@ func sendMsgFromServer(message *message, text string) {
 
 func (r *room) getUsersInChannel(subroomName string) []string {
 	list := make([]string, 0)
-	for client := range r.clients {
-		if client.subroomName == subroomName {
-			list = append(list, client.name)
+	if subroom, ok := r.allSubrooms[subroomName]; ok {
+		for username := range subroom.users {
+			list = append(list, username)
 		}
 	}
 	return list
@@ -86,7 +88,7 @@ func (r *room) run() {
 					subroomName: "",
 					client:      client,
 				}
-				sendMsgFromServer(message, "Dostępne polecenia: /create, /join, /unjoin, /list, /who")
+				sendMsgFromServer(message, "Dostępne polecenia: /create cname, /join cname, /unjoin cname, /list, /who cname")
 
 				log.Println("Do pokoju dołączył nowy klient!")
 			}
@@ -115,9 +117,14 @@ func (r *room) run() {
 					cmd := chunks[0]
 					log.Printf("COMMAND: %v %v", chunks, len(chunks))
 					params := ""
+					restText := ""
 					if len(chunks) > 1 {
 						params = chunks[1]
 					}
+					if len(chunks) > 2 {
+						restText = strings.Join(chunks[2:], " ")
+					}
+					log.Println(restText)
 					if cmd == "create" && len(params) > 0 {
 						subroomName := params
 						_, ok := r.allSubrooms[subroomName]
@@ -125,6 +132,7 @@ func (r *room) run() {
 							subroom := &subroom{
 								name:  subroomName,
 								owner: message.client,
+								users: make(map[string]*client, 0),
 							}
 							r.allSubrooms[subroomName] = subroom
 							sendMsgFromServer(message, fmt.Sprintf("Kanał %s utworzony", subroomName))
@@ -136,34 +144,57 @@ func (r *room) run() {
 						log.Printf("Subroom name: '%s'", subroomName)
 						subroom, ok := r.allSubrooms[subroomName]
 						if ok {
-							message.subroomName = subroom.name
+							subroom.users[message.client.name] = message.client
 							sendMsgFromServer(message, fmt.Sprintf("Udane przejście do kanału %s", subroomName))
 						} else {
 							sendMsgFromServer(message, fmt.Sprintf("Błąd: nie istnieje kanał o takiej nazwie (%s)", subroomName))
 						}
-					} else if cmd == "unjoin" {
-						message.subroomName = ""
-						sendMsgFromServer(message, "Udany powrót do kanału głównego")
+					} else if cmd == "unjoin" && len(params) > 0 {
+						subroomName := params
+						subroom, ok := r.allSubrooms[subroomName]
+						if ok {
+							delete(subroom.users, message.client.name)
+							sendMsgFromServer(message, fmt.Sprintf("Opuszczenie kanału %s", subroomName))
+						} else {
+							sendMsgFromServer(message, "Nie byłeś w tym kanale, nie możesz się od niego odłączyć")
+						}
 					} else if cmd == "list" {
 						list := make([]string, 0)
 						for name := range r.allSubrooms {
 							list = append(list, name)
 						}
 						sendMsgFromServer(message, fmt.Sprintf("Dostępne kanały (%d): %s", len(r.allSubrooms), strings.Join(list, ", ")))
-					} else if cmd == "who" {
-						list := r.getUsersInChannel(message.subroomName)
-						sendMsgFromServer(message, fmt.Sprintf("W bieżącym kanale są użytkownicy (%d): %s", len(list), strings.Join(list, ", ")))
+					} else if cmd == "who" && len(params) > 0 {
+						subroomName := params
+						_, ok := r.allSubrooms[subroomName]
+						if ok {
+							list := r.getUsersInChannel(subroomName)
+							sendMsgFromServer(message, fmt.Sprintf("W bieżącym kanale są użytkownicy (%d): %s", len(list), strings.Join(list, ", ")))
+						} else {
+							sendMsgFromServer(message, "Nie ma takiego kanału")
+						}
+					} else if cmd == "msg" && len(params) > 0 && restText != "" {
+						subroomName := params
+						subroom, ok := r.allSubrooms[subroomName]
+						message.text = []byte(restText)
+						if ok {
+							if _, ok := subroom.users[message.client.name]; ok {
+								// rozsyłanie wiadomości do wszystkich użytkowników w kanale
+								for _, client := range subroom.users {
+									client.send <- message
+									log.Println(" -- wysłano do klienta", client.name)
+								}
+							} else {
+								sendMsgFromServer(message, "Nie jesteś w tym kanale")
+							}
+						} else {
+							sendMsgFromServer(message, "Nie ma takiego kanału")
+						}
 					} else {
 						sendMsgFromServer(message, fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
 					}
 				} else {
-					// rozsyłanie wiadomości do wszystkich klientów
-					for client := range r.clients {
-						if client.subroomName == message.subroomName {
-							client.send <- message
-							log.Println(" -- wysłano do klienta", client.name)
-						}
-					}
+					sendMsgFromServer(message, fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
 				}
 			}
 		}
