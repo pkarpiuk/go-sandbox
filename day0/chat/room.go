@@ -58,6 +58,12 @@ func newRoom(name string) *room {
 	}
 }
 
+func sendMsgFromServer(message *message, text string) {
+	message.text = []byte(text)
+	message.fromServer = true
+	message.client.send <- message
+}
+
 func (r *room) run() {
 	for {
 		select {
@@ -104,12 +110,9 @@ func (r *room) run() {
 								owner: message.client,
 							}
 							allSubrooms[subroomName] = subroom
-							message.text = []byte(fmt.Sprintf("Kanał %s utworzony", subroomName))
-							message.client.send <- message
+							sendMsgFromServer(message, fmt.Sprintf("Kanał %s utworzony", subroomName))
 						} else {
-							message.text = []byte(fmt.Sprintf("Błąd: istnieje już kanał o takiej nazwie (%s)", subroomName))
-							message.fromServer = true
-							message.client.send <- message
+							sendMsgFromServer(message, fmt.Sprintf("Błąd: istnieje już kanał o takiej nazwie (%s)", subroomName))
 						}
 					} else if cmd == "join" && len(params) > 0 {
 						subroomName := params
@@ -117,21 +120,15 @@ func (r *room) run() {
 						subroom, ok := allSubrooms[subroomName]
 						if ok {
 							message.subroomName = subroom.name
-							message.text = []byte(fmt.Sprintf("Udane przejście do kanału %s", subroomName))
-							message.client.send <- message
+							sendMsgFromServer(message, fmt.Sprintf("Udane przejście do kanału %s", subroomName))
 						} else {
-							message.text = []byte(fmt.Sprintf("Błąd: nie istnieje kanał o takiej nazwie (%s)", subroomName))
-							message.fromServer = true
-							message.client.send <- message
+							sendMsgFromServer(message, fmt.Sprintf("Błąd: nie istnieje kanał o takiej nazwie (%s)", subroomName))
 						}
 					} else if cmd == "unjoin" {
 						message.subroomName = ""
-						message.text = []byte("Udany powrót do kanału głównego")
-						message.client.send <- message
+						sendMsgFromServer(message, "Udany powrót do kanału głównego")
 					} else {
-						message.text = []byte(fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
-						message.fromServer = true
-						message.client.send <- message
+						sendMsgFromServer(message, fmt.Sprintf("Błąd: nieznane polecenie: %s", messageStr))
 					}
 				} else {
 					// rozsyłanie wiadomości do wszystkich klientów
